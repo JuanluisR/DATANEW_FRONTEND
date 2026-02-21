@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Frontend - Sistema de Monitoreo Meteorológico
 
 Frontend moderno desarrollado con React, Vite y Tailwind CSS para el sistema de gestión de estaciones meteorológicas.
@@ -144,3 +145,6 @@ El diseño incluye:
 ## Soporte
 
 Para cualquier problema o sugerencia, contacta al equipo de desarrollo.
+=======
+# DATANEW_FRONTEND
+>>>>>>> 2c59482e67ce3a9c9fbfbe9793bf0433ccadb63d
