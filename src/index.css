@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900;
+    overflow: scroll;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+  html {
+    overflow: scroll;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  /* Chrome, Safari, Opera */
+  body::-webkit-scrollbar {
+    display: none;
+  }
+  html::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-500 hover:bg-primary-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 shadow-sm hover:shadow-md;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition duration-200;
+  }
+
+  .btn-danger {
+    @apply bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 shadow-sm hover:shadow-md;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-md p-6 border border-gray-100;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition duration-200;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-gray-700 mb-2;
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slideIn {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes windSway {
+  0%, 100% { transform: rotate(-8deg) scaleX(1); }
+  50%       { transform: rotate(8deg) scaleX(1.1); }
+}
+
+/* Estilos personalizados para el popup de Leaflet */
+.leaflet-popup-content-wrapper {
+  @apply rounded-xl shadow-xl border-0 p-0;
+}
+
+.leaflet-popup-content {
+  @apply m-0 p-0;
+  width: auto !important;
+}
+
+.leaflet-popup-tip {
+  @apply bg-white;
+}
+
+.leaflet-container {
+  font-family: inherit;
+  z-index: 1 !important;
+}
+
+/* Asegurar que los controles de Leaflet no interfieran con los modales */
+.leaflet-pane {
+  z-index: 1 !important;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 10 !important;
+}
+
+/* Popup de Leaflet debe tener un z-index moderado */
+.leaflet-popup {
+  z-index: 100 !important;
+}
+
+/* Asegurar que los modales siempre estén por encima */
+.modal-overlay {
+  z-index: 9999 !important;
+}
+
+/* Dropdowns y menús desplegables */
+.dropdown-menu {
+  z-index: 9000 !important;
+}
+
+/* Ocultar scrollbar pero mantener scroll */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
