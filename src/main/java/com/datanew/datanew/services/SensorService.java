@@ -9,7 +9,7 @@ import com.datanew.datanew.models.entities.Sensor;
 public interface SensorService {
 
     List<Sensor> findAll();
-    
+
     List<Sensor> findByIdEstacion(String idEstacion);
 
     Optional<Sensor> findById(Long sensor_id);
@@ -18,4 +18,6 @@ public interface SensorService {
     Optional<Sensor> update(Sensor sensor, Long sensor_id);
 
     void remove(Long sensor_id);
+
+    boolean existsDuplicate(String idSensor, Integer canal, String tipoSensor, String username, Long excludeId);
 }

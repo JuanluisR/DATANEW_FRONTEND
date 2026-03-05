@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,8 @@ import com.datanew.datanew.repositories.DataStationRepository;
 
 @Service
 public class DataStationServiceImpl implements DataStationService{
+
+    private static final Logger log = LoggerFactory.getLogger(DataStationServiceImpl.class);
 
     @Autowired
     private DataStationRepository dataStationRepository;
@@ -159,6 +163,7 @@ public class DataStationServiceImpl implements DataStationService{
             
             return parseAndFindByDateRange(idEstacion, decodedStartDate, decodedEndDate);
         } catch (Exception e) {
+            log.warn("URL decoding failed for date range, trying raw values: {}", e.getMessage());
             try {
                 return parseAndFindByDateRange(idEstacion, startDate, endDate);
             } catch (Exception ex) {

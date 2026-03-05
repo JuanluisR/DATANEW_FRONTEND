@@ -1,7 +1,6 @@
 package com.datanew.datanew.models.entities;
 
-
-import java.util.Date;
+import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -10,8 +9,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -55,11 +52,9 @@ private Boolean  is_staff;
 
 private Boolean  is_active;
 @Column(name = "last_login")
-@Temporal(TemporalType.TIMESTAMP)
-private Date last_login;
+private LocalDateTime last_login;
 @Column(name = "date_joined")
-@Temporal(TemporalType.TIMESTAMP)
-private Date date_joined;
+private LocalDateTime date_joined;
 
 @Column(name = "biografia", columnDefinition = "TEXT")
 private String biografia;
@@ -89,16 +84,16 @@ private String ciudad;
     private String imagen;
 
 
-public Date getLast_login() {
+public LocalDateTime getLast_login() {
     return last_login;
 }
-public void setLast_login(Date last_login) {
+public void setLast_login(LocalDateTime last_login) {
     this.last_login = last_login;
 }
-public Date getDate_joined() {
+public LocalDateTime getDate_joined() {
     return date_joined;
 }
-public void setDate_joined(Date date_joined) {
+public void setDate_joined(LocalDateTime date_joined) {
     this.date_joined = date_joined;
 }
 public Long getId() {
@@ -211,7 +206,5 @@ public String getImagen() {
 public void setImagen(String imagen) {
     this.imagen = imagen;
 }
-
-
 
 }

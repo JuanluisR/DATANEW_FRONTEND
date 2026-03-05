@@ -36,6 +36,9 @@ public class Sensor {
     @Column(name = "key_sensor")
     private String key_sensor;
 
+    @Column(name = "canal")
+    private Integer canal;
+
     @Column(name = "model_sensor")
     private String model_sensor;
 
@@ -110,5 +113,13 @@ public class Sensor {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public Integer getCanal() {
+        return canal;
+    }
+
+    public void setCanal(Integer canal) {
+        this.canal = canal;
     }
 }

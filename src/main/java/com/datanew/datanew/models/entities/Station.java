@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
 
 @Entity
 @Table(name = "estaciones", indexes = {
@@ -19,12 +20,15 @@ public class Station {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Station ID is required")
     @Column(name = "id_estacion")
     private String id_estacion;
 
-@Column(name = "nombre_estacion")
+    @NotBlank(message = "Station name is required")
+    @Column(name = "nombre_estacion")
     private String nombre_estacion;
-@Column(name = "lat")
+
+    @Column(name = "lat")
     private Double lat;
     @Column(name = "lon")
     private Double lon;
@@ -37,18 +41,18 @@ public class Station {
     private Double altura_suelo;
    @Column(name = "departamento")
     private String departamento;
-@Column(name = "ciudad")
+    @Column(name = "ciudad")
     private String ciudad;
     @Column(name = "estado")
     private String estado;
-@Column(name = "pais")
+    @Column(name = "pais")
     private String pais;
     @Column(name = "marca")
     private String marca;
     @Column(name = "modelo")
     private String modelo;
     // @Column(unique = true)
-@Column(name = "key")
+    @Column(name = "key")
     private String key;
     //@Column(unique = true)
     @Column(name = "passkey")
@@ -64,7 +68,10 @@ public class Station {
     @Column(name = "imei")
     private String imei;
     @Column(name = "freq")
-     private String freq;
+    private String freq;
+
+    @Column(name = "tipo_estacion")
+    private String tipo_estacion;
 
     public Long getId() {
         return id;
@@ -84,7 +91,7 @@ public class Station {
     public void setNombre_estacion(String nombre_estacion) {
         this.nombre_estacion = nombre_estacion;
     }
-public Double getLat() {
+    public Double getLat() {
         return lat;
     }
     public void setLat(Double lat) {
@@ -102,7 +109,7 @@ public Double getLat() {
     public void setForecast_key(String forecast_key) {
         this.forecast_key = forecast_key;
     }
-public Double getAltura_suelo() {
+    public Double getAltura_suelo() {
         return altura_suelo;
     }
     public void setAltura_suelo(Double altura_suelo) {
@@ -198,10 +205,10 @@ public Double getAltura_suelo() {
     public void setFreq(String freq) {
         this.freq = freq;
     }
-
-
-
-    
-
-
+    public String getTipo_estacion() {
+        return tipo_estacion;
+    }
+    public void setTipo_estacion(String tipo_estacion) {
+        this.tipo_estacion = tipo_estacion;
+    }
 }

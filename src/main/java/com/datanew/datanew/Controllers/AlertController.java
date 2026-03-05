@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,80 +21,103 @@ public class AlertController {
     @Autowired
     private AlertService alertService;
 
+    private String getAuthenticatedUsername() {
+        return SecurityContextHolder.getContext().getAuthentication().getName();
+    }
+
     @GetMapping
     public List<Alert> getAllAlerts() {
         return alertService.getAllAlerts();
     }
 
     @GetMapping("/user/{username}")
-    public ResponseEntity<List<Alert>> getAlertsByUsername(@PathVariable String username) {
-        List<Alert> alerts = alertService.getAlertsByUsername(username);
-        return ResponseEntity.ok(alerts);
+    public ResponseEntity<?> getAlertsByUsername(@PathVariable String username) {
+        if (!getAuthenticatedUsername().equals(username)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(alertService.getAlertsByUsername(username));
     }
 
     @GetMapping("/user/{username}/active")
-    public ResponseEntity<List<Alert>> getActiveAlertsByUsername(@PathVariable String username) {
-        List<Alert> alerts = alertService.getActiveAlertsByUsername(username);
-        return ResponseEntity.ok(alerts);
+    public ResponseEntity<?> getActiveAlertsByUsername(@PathVariable String username) {
+        if (!getAuthenticatedUsername().equals(username)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(alertService.getActiveAlertsByUsername(username));
     }
 
     @GetMapping("/station/{idEstacion}")
     public ResponseEntity<List<Alert>> getAlertsByStation(@PathVariable String idEstacion) {
-        List<Alert> alerts = alertService.getAlertsByStation(idEstacion);
-        return ResponseEntity.ok(alerts);
+        return ResponseEntity.ok(alertService.getAlertsByStation(idEstacion));
     }
 
     @GetMapping("/station/{idEstacion}/active")
     public ResponseEntity<List<Alert>> getActiveAlertsByStation(@PathVariable String idEstacion) {
-        List<Alert> alerts = alertService.getActiveAlertsByStation(idEstacion);
-        return ResponseEntity.ok(alerts);
+        return ResponseEntity.ok(alertService.getActiveAlertsByStation(idEstacion));
     }
 
     @GetMapping("/active")
     public ResponseEntity<List<Alert>> getAllActiveAlerts() {
-        List<Alert> alerts = alertService.getAllActiveAlerts();
-        return ResponseEntity.ok(alerts);
+        return ResponseEntity.ok(alertService.getAllActiveAlerts());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getAlertById(@PathVariable Long id) {
         Optional<Alert> alert = alertService.getAlertById(id);
-        if (alert.isPresent()) {
-            return ResponseEntity.ok(alert.get());
+        if (alert.isEmpty()) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+        if (!getAuthenticatedUsername().equals(alert.get().getUsername())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(alert.get());
     }
 
     @PostMapping
-    public ResponseEntity<Alert> createAlert(@Valid @RequestBody Alert alert) {
-        Alert createdAlert = alertService.createAlert(alert);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdAlert);
+    public ResponseEntity<?> createAlert(@Valid @RequestBody Alert alert) {
+        alert.setUsername(getAuthenticatedUsername());
+        Alert created = alertService.createAlert(alert);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateAlert(@PathVariable Long id, @Valid @RequestBody Alert alertDetails) {
-        Optional<Alert> updatedAlert = alertService.updateAlert(id, alertDetails);
-        if (updatedAlert.isPresent()) {
-            return ResponseEntity.ok(updatedAlert.get());
+        Optional<Alert> existing = alertService.getAlertById(id);
+        if (existing.isEmpty()) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+        if (!getAuthenticatedUsername().equals(existing.get().getUsername())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return alertService.updateAlert(id, alertDetails)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PatchMapping("/{id}/toggle")
     public ResponseEntity<?> toggleAlertActive(@PathVariable Long id) {
-        Optional<Alert> alert = alertService.toggleAlertActive(id);
-        if (alert.isPresent()) {
-            return ResponseEntity.ok(alert.get());
+        Optional<Alert> existing = alertService.getAlertById(id);
+        if (existing.isEmpty()) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+        if (!getAuthenticatedUsername().equals(existing.get().getUsername())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return alertService.toggleAlertActive(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteAlert(@PathVariable Long id) {
-        if (alertService.existsById(id)) {
-            alertService.deleteAlert(id);
-            return ResponseEntity.noContent().build();
+        Optional<Alert> existing = alertService.getAlertById(id);
+        if (existing.isEmpty()) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+        if (!getAuthenticatedUsername().equals(existing.get().getUsername())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        alertService.deleteAlert(id);
+        return ResponseEntity.noContent().build();
     }
 }

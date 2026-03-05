@@ -50,6 +50,7 @@ public class SensorServiceImpl implements SensorService {
             sensorDb.setId_estacion(sensor.getId_estacion());
             sensorDb.setId_sensor(sensor.getId_sensor());
             sensorDb.setKey_sensor(sensor.getKey_sensor());
+            sensorDb.setCanal(sensor.getCanal());
             sensorDb.setModel_sensor(sensor.getModel_sensor());
             sensorDb.setTipo_sensor(sensor.getTipo_sensor());
             sensorDb.setUsername(sensor.getUsername());
@@ -63,6 +64,10 @@ public class SensorServiceImpl implements SensorService {
     public void remove(Long sensor_id) {
         repository.deleteById(sensor_id);
     }
-    
 
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsDuplicate(String idSensor, Integer canal, String tipoSensor, String username, Long excludeId) {
+        return repository.existsDuplicate(idSensor, canal, tipoSensor, username, excludeId);
+    }
 }

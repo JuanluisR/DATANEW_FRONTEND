@@ -1,61 +1,19 @@
 package com.datanew.datanew.services;
 
-import java.time.LocalDateTime;
+import com.datanew.datanew.models.entities.ApiKey;
+
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+public interface ApiKeyService {
 
-import com.datanew.datanew.models.entities.ApiKey;
-import com.datanew.datanew.repositories.ApiKeyRepository;
+    ApiKey generateApiKey(String idEstacion, String username);
 
-@Service
-public class ApiKeyService {
+    List<ApiKey> getApiKeysByUsername(String username);
 
-    @Autowired
-    private ApiKeyRepository repository;
+    Optional<ApiKey> validateApiKey(String apiKey);
 
-    @Transactional
-    public ApiKey generateApiKey(String idEstacion, String username) {
-        String apiKey = UUID.randomUUID().toString().replace("-", "");
-        
-        ApiKey key = new ApiKey();
-        key.setApiKey(apiKey);
-        key.setIdEstacion(idEstacion);
-        key.setUsername(username);
-        key.setCreatedAt(LocalDateTime.now());
-        key.setStatus(true);
-        
-        return repository.save(key);
-    }
+    void toggleStatus(Long id);
 
-    @Transactional(readOnly = true)
-    public List<ApiKey> getApiKeysByUsername(String username) {
-        return repository.findAll().stream()
-            .filter(key -> key.getUsername().equals(username))
-            .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public Optional<ApiKey> validateApiKey(String apiKey) {
-        return repository.findByApiKeyAndStatusTrue(apiKey);
-    }
-
-    @Transactional
-    public void toggleStatus(Long id) {
-        Optional<ApiKey> keyOpt = repository.findById(id);
-        if (keyOpt.isPresent()) {
-            ApiKey key = keyOpt.get();
-            key.setStatus(!key.getStatus());
-            repository.save(key);
-        }
-    }
-
-    @Transactional
-    public void deleteApiKey(Long id) {
-        repository.deleteById(id);
-    }
+    void deleteApiKey(Long id);
 }

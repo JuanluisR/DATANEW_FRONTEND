@@ -7,10 +7,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "api_keys")
+@Table(name = "api_keys", indexes = {
+    @Index(name = "idx_apikey_username", columnList = "username")
+})
 public class ApiKey {
 
     @Id

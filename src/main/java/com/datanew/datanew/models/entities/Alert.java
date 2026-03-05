@@ -6,7 +6,10 @@ import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "alertas")
+@Table(name = "alertas", indexes = {
+    @Index(name = "idx_alert_username", columnList = "username"),
+    @Index(name = "idx_alert_id_estacion", columnList = "id_estacion")
+})
 public class Alert {
 
     @Id
