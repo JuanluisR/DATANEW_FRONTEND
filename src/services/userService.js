@@ -1,4 +1,5 @@
 import api, { API_BASE_URL } from './api';
+import axios from 'axios';
 
 export const userService = {
   getAll: () => api.get('/user'),
@@ -14,5 +15,4 @@ export const userService = {
   delete: (id) => api.delete(`/user/${id}`),
 };
 
-import axios from 'axios';
 export default userService;

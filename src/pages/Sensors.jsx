@@ -5,8 +5,17 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
 import { useZodForm, InputField, SelectField, FormButtons, z, useDebounce } from '../components/FormFields';
-import { Plus, Edit2, Trash2, X, Database, Activity, Gauge, Radio, Key, MapPin, Search, Crosshair } from 'lucide-react';
-import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import dataStationService from '../services/dataStationService';
+import { Plus, Edit2, Trash2, X, Database, Activity, Gauge, Radio, MapPin, Search, Crosshair, Clock } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+
+const MapFlyTo = ({ lat, lon, zoom }) => {
+  const map = useMap();
+  useEffect(() => {
+    map.flyTo([lat, lon], zoom, { duration: 0.8 });
+  }, [lat, lon, zoom]);
+  return null;
+};
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -18,13 +27,23 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
+const timeAgo = (dateString) => {
+  if (!dateString) return null;
+  const date = new Date(dateString.includes('Z') || dateString.match(/[+-]\d{2}:\d{2}$/) ? dateString : dateString + 'Z');
+  const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diff < 60) return `hace ${diff}s`;
+  if (diff < 3600) return `hace ${Math.floor(diff / 60)}min`;
+  if (diff < 86400) return `hace ${Math.floor(diff / 3600)}h`;
+  return `hace ${Math.floor(diff / 86400)}d`;
+};
+
 const sensorSchema = z.object({
   nombre_sensor: z.string().min(1, 'El nombre del sensor es requerido'),
   id_estacion: z.string().min(1, 'La estación es requerida'),
   tipo_sensor: z.string().min(1, 'El tipo de sensor es requerido'),
   id_sensor: z.string().optional(),
   model_sensor: z.string().optional(),
-  key_sensor: z.string().optional(),
+  canal: z.string().optional(),
   username: z.string().optional(),
   lat: z.string().optional(),
   lon: z.string().optional(),
@@ -43,6 +62,7 @@ const Sensors = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingSensor, setEditingSensor] = useState(null);
+  const [lastSentByStation, setLastSentByStation] = useState({});
   const [gettingLocation, setGettingLocation] = useState(false);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [mapCenter, setMapCenter] = useState([4.5, -74.0]);
@@ -58,7 +78,7 @@ const Sensors = () => {
     tipo_sensor: '',
     id_sensor: '',
     model_sensor: '',
-    key_sensor: '',
+    canal: '',
     username: user?.username || '',
     lat: '',
     lon: '',
@@ -85,6 +105,9 @@ const Sensors = () => {
       const lat = parseFloat(debouncedLat);
       const lon = parseFloat(debouncedLon);
       if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 && (lat !== 0 || lon !== 0)) {
+        setMapCenter([lat, lon]);
+        setMapZoom(14);
+        setMarkerPosition([lat, lon]);
         try {
           const response = await stationService.geocode(lat, lon);
           const data = response.data;
@@ -190,6 +213,20 @@ const Sensors = () => {
       const response = await sensorService.getAll();
       const userSensors = response.data.filter(sensor => sensor.username === user.username);
       setSensors(userSensors);
+
+      const uniqueStations = [...new Set(userSensors.map(s => s.id_estacion).filter(Boolean))];
+      const latestMap = {};
+      await Promise.allSettled(
+        uniqueStations.map(async (id) => {
+          try {
+            const res = await dataStationService.getLatestByIdEstacion(id);
+            if (res.data?.wswdat_report_date) {
+              latestMap[id] = res.data.wswdat_report_date;
+            }
+          } catch (_) {}
+        })
+      );
+      setLastSentByStation(latestMap);
     } catch (error) {
       console.error('Error al cargar sensores:', error);
       toast.error('Error al cargar sensores');
@@ -200,15 +237,20 @@ const Sensors = () => {
 
   const onSubmit = async (data) => {
     try {
+      const payload = { ...data, canal: data.canal !== '' ? Number(data.canal) : null };
       if (editingSensor) {
-        await sensorService.update(editingSensor.sensor_id, data);
+        await sensorService.update(editingSensor.sensor_id, payload);
       } else {
-        await sensorService.create(data);
+        await sensorService.create(payload);
       }
       fetchSensors();
       closeModal();
     } catch (error) {
-      toast.error('Error al guardar sensor');
+      if (error.response?.status === 409) {
+        toast.error('Ya existe un sensor con el mismo ID, canal, tipo y usuario');
+      } else {
+        toast.error('Error al guardar sensor');
+      }
     }
   };
 
@@ -234,7 +276,7 @@ const Sensors = () => {
         tipo_sensor: sensor.tipo_sensor || '',
         id_sensor: sensor.id_sensor || '',
         model_sensor: sensor.model_sensor || '',
-        key_sensor: sensor.key_sensor || '',
+        canal: sensor.canal != null ? String(sensor.canal) : '',
         username: sensor.username || user?.username || '',
         lat: sensor.lat?.toString() || '',
         lon: sensor.lon?.toString() || '',
@@ -250,7 +292,7 @@ const Sensors = () => {
         tipo_sensor: '',
         id_sensor: '',
         model_sensor: '',
-        key_sensor: '',
+        canal: '',
         username: user?.username || '',
         lat: '',
         lon: '',
@@ -269,7 +311,7 @@ const Sensors = () => {
   };
 
   const stationOptions = stations.map(station => ({
-    value: station.id,
+    value: station.id_estacion,
     label: `${station.nombre_estacion} - ${station.ciudad}`
   }));
 
@@ -300,60 +342,82 @@ const Sensors = () => {
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {sensors.map((sensor) => (
-          <div key={sensor.sensor_id} className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all border border-purple-200 overflow-hidden">
-            {/* Header */}
-            <div className="px-4 py-2 bg-purple-50 border-b border-purple-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Database className="h-4 w-4 text-purple-500" />
-                <span className="text-xs font-semibold text-purple-700">Sensor</span>
+        {sensors.map((sensor) => {
+          const lastSent = lastSentByStation[sensor.id_estacion];
+          const ago = timeAgo(lastSent);
+          return (
+            <div key={sensor.sensor_id} className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all border border-emerald-200 overflow-hidden">
+              {/* Header */}
+              <div className="px-4 py-2 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Database className="h-4 w-4 text-emerald-500" />
+                  <span className="text-xs font-semibold text-emerald-700">Sensor</span>
+                </div>
+                {sensor.tipo_sensor && (
+                  <span className="text-xs font-medium text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
+                    {sensor.tipo_sensor}
+                  </span>
+                )}
+                <div className="flex space-x-1">
+                  <button onClick={() => openModal(sensor)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded">
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                  <button onClick={() => handleDelete(sensor.sensor_id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-              <div className="flex space-x-1">
-                <button onClick={() => openModal(sensor)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded">
-                  <Edit2 className="h-4 w-4" />
-                </button>
-                <button onClick={() => handleDelete(sensor.sensor_id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded">
-                  <Trash2 className="h-4 w-4" />
-                </button>
+
+              <div className="p-4">
+                <h3 className="font-bold text-xl text-gray-900 uppercase mb-3">{sensor.nombre_sensor}</h3>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-start gap-2">
+                    <Activity className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-400">Tipo</p>
+                      <p className="font-semibold text-gray-700 text-sm">{sensor.tipo_sensor || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Gauge className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-400">ID Sensor</p>
+                      <p className="font-semibold text-gray-700 text-sm">{sensor.id_sensor || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Radio className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-400">Modelo</p>
+                      <p className="font-semibold text-gray-700 text-sm">{sensor.model_sensor || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-400">Canal</p>
+                      <p className="font-semibold text-gray-700 text-sm">{sensor.canal ?? '—'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Último envío */}
+                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
+                  <Clock className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                  <span className="text-xs text-gray-400">Último envío:</span>
+                  {ago ? (
+                    <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                      {ago}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-400">—</span>
+                  )}
+                </div>
               </div>
             </div>
-
-            <div className="p-4">
-              <h3 className="font-bold text-xl text-gray-900 uppercase mb-3">{sensor.nombre_sensor}</h3>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-start gap-2">
-                  <Activity className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm text-gray-400">Tipo</p>
-                    <p className="font-semibold text-gray-700 text-sm">{sensor.tipo_sensor || '—'}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Gauge className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm text-gray-400">ID Sensor</p>
-                    <p className="font-semibold text-gray-700 text-sm">{sensor.sensor_id || '—'}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Radio className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm text-gray-400">Estación</p>
-                    <p className="font-semibold text-gray-700 text-sm">{sensor.id_estacion || '—'}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm text-gray-400">Usuario</p>
-                    <p className="font-semibold text-gray-700 text-sm">{sensor.username || '—'}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {showModal && (
@@ -426,12 +490,13 @@ const Sensors = () => {
                 />
 
                 <div className="md:col-span-2">
-                  <InputField
-                    label="Key"
-                    name="key_sensor"
+                  <SelectField
+                    label="Canal"
+                    name="canal"
                     register={register}
-                    error={errors.key_sensor}
-                    placeholder="Clave o identificador único"
+                    error={errors.canal}
+                    options={[0,1,2,3,4,5,6,7,8].map(n => ({ value: String(n), label: `Canal ${n}` }))}
+                    placeholder="Seleccionar canal..."
                   />
                 </div>
 
@@ -599,6 +664,7 @@ const Sensors = () => {
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
+                  <MapFlyTo lat={mapCenter[0]} lon={mapCenter[1]} zoom={mapZoom} />
                   {markerPosition && (
                     <Marker position={markerPosition} draggable={true} eventHandlers={{ dragend: (e) => {
                       const { lat, lng } = e.target.getLatLng();

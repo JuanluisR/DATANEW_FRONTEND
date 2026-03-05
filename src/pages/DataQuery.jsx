@@ -5,8 +5,11 @@ import { registerLocale } from 'react-datepicker';
 import es from 'date-fns/locale/es';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
+
+Highcharts.setOptions({ accessibility: { enabled: false } });
 import stationService from '../services/stationService';
 import dataStationService from '../services/dataStationService';
+import sensorService from '../services/sensorService';
 import { useAuth } from '../context/AuthContext';
 import { Search, Download, BarChart3, Calendar, Clock, AlertCircle, FileText, Sun, Droplets, Wind, CloudRain, Thermometer, Compass, Cloud, Sprout } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -14,6 +17,27 @@ import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 
 registerLocale('es', es);
+
+const SENSOR_VAR_MAP = {
+  'temperatura':    { key: 'wswdat_temp_c',             unit: '°C',   color: '#ef4444', label: 'Temperatura' },
+  'temperature':    { key: 'wswdat_temp_c',             unit: '°C',   color: '#ef4444', label: 'Temperatura' },
+  'humedad':        { key: 'wswdat_relative_humidity',  unit: '%',    color: '#3b82f6', label: 'Humedad' },
+  'humidity':       { key: 'wswdat_relative_humidity',  unit: '%',    color: '#3b82f6', label: 'Humedad' },
+  'presion':        { key: 'wswdat_pressure_rel_hpa',   unit: 'hPa',  color: '#8b5cf6', label: 'Presión' },
+  'pressure':       { key: 'wswdat_pressure_rel_hpa',   unit: 'hPa',  color: '#8b5cf6', label: 'Presión' },
+  'viento':         { key: 'wswdat_wind_speed_kmh',     unit: 'km/h', color: '#14b8a6', label: 'Velocidad Viento' },
+  'wind':           { key: 'wswdat_wind_speed_kmh',     unit: 'km/h', color: '#14b8a6', label: 'Velocidad Viento' },
+  'anemometro':     { key: 'wswdat_wind_speed_kmh',     unit: 'km/h', color: '#14b8a6', label: 'Velocidad Viento' },
+  'lluvia':         { key: 'wswdat_precip_today_mm',    unit: 'mm',   color: '#0ea5e9', label: 'Precipitación' },
+  'rain':           { key: 'wswdat_precip_today_mm',    unit: 'mm',   color: '#0ea5e9', label: 'Precipitación' },
+  'precipitacion':  { key: 'wswdat_precip_today_mm',    unit: 'mm',   color: '#0ea5e9', label: 'Precipitación' },
+  'solar':          { key: 'wswdat_solar_rad_wm2',      unit: 'W/m²', color: '#f59e0b', label: 'Radiación Solar' },
+  'radiacion':      { key: 'wswdat_solar_rad_wm2',      unit: 'W/m²', color: '#f59e0b', label: 'Radiación Solar' },
+  'uv':             { key: 'wswdat_uv_index',           unit: '',     color: '#eab308', label: 'UV Index' },
+  'eto':            { key: 'wswdat_eto_mm',             unit: 'mm',   color: '#10b981', label: 'ETo' },
+  'rocio':          { key: 'wswdat_dewpoint_c',         unit: '°C',   color: '#06b6d4', label: 'Punto de Rocío' },
+  'dewpoint':       { key: 'wswdat_dewpoint_c',         unit: '°C',   color: '#06b6d4', label: 'Punto de Rocío' },
+};
 
 const WIND_DIR_MAP = {
   'N': 0, 'NNE': 22.5, 'NE': 45, 'ENE': 67.5,
@@ -36,6 +60,7 @@ const DataQuery = () => {
   const [error, setError] = useState('');
   const [showCharts, setShowCharts] = useState(false);
   const [selectedVariables, setSelectedVariables] = useState(['temperature', 'humidity']);
+  const [sensors, setSensors] = useState([]);
   const chartsRef = useRef(null);
 
   const parseLocalDate = (dateString) => {
@@ -248,6 +273,13 @@ const DataQuery = () => {
       const processedData = processDataByScale(response.data, timeScale);
       setData(processedData);
       setShowCharts(true);
+
+      try {
+        const sensorsRes = await sensorService.getByStation(selectedStation);
+        setSensors(sensorsRes.data || []);
+      } catch (_) {
+        setSensors([]);
+      }
     } catch (error) {
       console.error('Error al consultar datos:', error);
       setError('Error al consultar los datos. Intenta de nuevo.');
@@ -546,6 +578,53 @@ const DataQuery = () => {
     doc.save(fileName);
   };
 
+  const computeStats = (rawData) => {
+    if (!rawData || rawData.length === 0) return {};
+
+    const getValid = (key) =>
+      rawData.map(d => d[key]).filter(v => v !== null && v !== undefined && !isNaN(Number(v))).map(Number);
+
+    const result = {};
+
+    ['wswdat_temp_c', 'wswdat_relative_humidity', 'wswdat_pressure_rel_hpa',
+     'wswdat_wind_speed_kmh', 'wswdat_solar_rad_wm2', 'wswdat_dewpoint_c'].forEach(key => {
+      const vals = getValid(key);
+      result[key] = vals.length > 0 ? {
+        min: Math.min(...vals),
+        max: Math.max(...vals),
+        avg: vals.reduce((a, b) => a + b, 0) / vals.length,
+        accum: null
+      } : null;
+    });
+
+    // Precipitation: accumulated = sum of daily max
+    const precipByDay = {};
+    rawData.forEach(item => {
+      const val = item.wswdat_precip_today_mm;
+      if (val !== null && val !== undefined && !isNaN(Number(val))) {
+        const day = parseLocalDate(item.wswdat_report_date).toISOString().split('T')[0];
+        precipByDay[day] = Math.max(precipByDay[day] || 0, Number(val));
+      }
+    });
+    const allPrecipVals = getValid('wswdat_precip_today_mm');
+    const dailyPrecipVals = Object.values(precipByDay);
+    result['wswdat_precip_today_mm'] = dailyPrecipVals.length > 0 ? {
+      min: null,
+      max: allPrecipVals.length > 0 ? Math.max(...allPrecipVals) : null,
+      avg: null,
+      accum: dailyPrecipVals.reduce((a, b) => a + b, 0)
+    } : null;
+
+    // ETO: total sum
+    const etoVals = getValid('wswdat_eto_mm');
+    result['wswdat_eto_mm'] = etoVals.length > 0 ? {
+      min: null, max: null, avg: null,
+      accum: etoVals.reduce((a, b) => a + b, 0)
+    } : null;
+
+    return result;
+  };
+
   if (loadingStations) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -692,9 +771,100 @@ const DataQuery = () => {
 
       {showCharts && data.length > 0 && (
         <div className="space-y-6">
-          <h2 className="text-xl font-bold text-gray-900">
-            Resultados: {data.length} registros ({timeScale})
-          </h2>
+          {/* Statistics Summary Table */}
+          {(() => {
+            const stats = computeStats(rawQueryData);
+            const tableRows = [
+              { key: 'wswdat_temp_c',            label: 'Temperatura',     unit: '°C',   icon: Thermometer, color: 'text-red-500',     bg: 'bg-red-50' },
+              { key: 'wswdat_relative_humidity',  label: 'Humedad',         unit: '%',    icon: Droplets,    color: 'text-blue-500',    bg: 'bg-blue-50' },
+              { key: 'wswdat_pressure_rel_hpa',   label: 'Presión',         unit: 'hPa',  icon: BarChart3,   color: 'text-purple-500',  bg: 'bg-purple-50' },
+              { key: 'wswdat_wind_speed_kmh',     label: 'Vel. Viento',     unit: 'km/h', icon: Wind,        color: 'text-emerald-500', bg: 'bg-emerald-50' },
+              { key: 'wswdat_solar_rad_wm2',      label: 'Radiación Solar', unit: 'W/m²', icon: Sun,         color: 'text-amber-500',   bg: 'bg-amber-50' },
+              { key: 'wswdat_precip_today_mm',    label: 'Lluvia',          unit: 'mm',   icon: CloudRain,   color: 'text-sky-500',     bg: 'bg-sky-50' },
+              { key: 'wswdat_eto_mm',             label: 'ETo',             unit: 'mm',   icon: Sprout,      color: 'text-teal-500',    bg: 'bg-teal-50' },
+            ];
+            const fmt = (v, d = 1) => (v !== null && v !== undefined ? Number(v).toFixed(d) : null);
+            const hasAnyStats = tableRows.some(r => stats[r.key]);
+            if (!hasAnyStats) return null;
+            return (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-white font-semibold text-base flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4 text-slate-300" />
+                      Resumen Estadístico del Período
+                    </h3>
+                    <p className="text-slate-400 text-xs mt-0.5">{rawQueryData.length.toLocaleString()} registros · {startDate?.toLocaleDateString('es-ES')} – {endDate?.toLocaleDateString('es-ES')}</p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100">
+                        <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider w-48">Variable</th>
+                        <th className="text-center px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Mínimo</th>
+                        <th className="text-center px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Máximo</th>
+                        <th className="text-center px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Promedio</th>
+                        <th className="text-center px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Acumulado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tableRows.map((row, i) => {
+                        const s = stats[row.key];
+                        if (!s) return null;
+                        const Icon = row.icon;
+                        const minVal = fmt(s.min);
+                        const maxVal = fmt(s.max);
+                        const avgVal = fmt(s.avg);
+                        const accumVal = fmt(s.accum);
+                        return (
+                          <tr
+                            key={row.key}
+                            className={`border-b border-slate-50 transition-colors hover:bg-slate-50/80 ${i % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'}`}
+                          >
+                            <td className="px-5 py-3.5">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-lg ${row.bg} flex items-center justify-center flex-shrink-0`}>
+                                  <Icon className={`h-4 w-4 ${row.color}`} />
+                                </div>
+                                <div>
+                                  <div className="font-medium text-gray-700 text-sm leading-tight">{row.label}</div>
+                                  <div className="text-xs text-gray-400">{row.unit}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-3.5 text-center">
+                              {minVal ? (
+                                <span className="font-semibold text-gray-700">{minVal} <span className="font-normal text-gray-400 text-xs">{row.unit}</span></span>
+                              ) : <span className="text-gray-300 text-base">—</span>}
+                            </td>
+                            <td className="px-5 py-3.5 text-center">
+                              {maxVal ? (
+                                <span className="font-semibold text-gray-700">{maxVal} <span className="font-normal text-gray-400 text-xs">{row.unit}</span></span>
+                              ) : <span className="text-gray-300 text-base">—</span>}
+                            </td>
+                            <td className="px-5 py-3.5 text-center">
+                              {avgVal ? (
+                                <span className="font-semibold text-gray-700">{avgVal} <span className="font-normal text-gray-400 text-xs">{row.unit}</span></span>
+                              ) : <span className="text-gray-300 text-base">—</span>}
+                            </td>
+                            <td className="px-5 py-3.5 text-center">
+                              {accumVal ? (
+                                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${row.bg} ${row.color}`}>
+                                  {accumVal} {row.unit}
+                                </span>
+                              ) : <span className="text-gray-300 text-base">—</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
 
           <div ref={chartsRef} className="space-y-6">
             {/* Temperature & Humidity Chart */}
@@ -1130,6 +1300,88 @@ const DataQuery = () => {
             </div>
             )}
           </div>
+
+          {/* Sensor Charts */}
+          {sensors.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 pt-2 border-t border-gray-200">
+                <div className="h-5 w-1 rounded-full bg-emerald-500"></div>
+                <h2 className="text-lg font-bold text-gray-800">Sensores de la estación</h2>
+                <span className="text-xs font-medium text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  {sensors.length} sensor{sensors.length !== 1 ? 'es' : ''}
+                </span>
+              </div>
+              {sensors.map(sensor => {
+                const varInfo = SENSOR_VAR_MAP[(sensor.tipo_sensor || '').toLowerCase().trim()] || null;
+                const seriesData = varInfo ? data.map(d => d[varInfo.key] ?? null) : null;
+                const hasData = varInfo && seriesData && seriesData.some(v => v !== null && !isNaN(v));
+                return (
+                  <div key={sensor.sensor_id} className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="font-bold text-gray-900 text-base">{sensor.nombre_sensor}</h3>
+                        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                          <span className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                            ID: {sensor.id_sensor}
+                          </span>
+                          {sensor.tipo_sensor && (
+                            <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                              {sensor.tipo_sensor}
+                            </span>
+                          )}
+                          {sensor.model_sensor && (
+                            <span className="text-xs text-gray-400">{sensor.model_sensor}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {hasData ? (
+                      <HighchartsReact
+                        highcharts={Highcharts}
+                        options={{
+                          chart: { height: 200 },
+                          title: { text: '' },
+                          xAxis: { categories: data.map(d => d.timestamp) },
+                          yAxis: { title: { text: varInfo.unit } },
+                          credits: { enabled: false },
+                          tooltip: {
+                            shared: true,
+                            useHTML: true,
+                            formatter: function() {
+                              const pointIdx = this.points?.[0]?.point?.index;
+                              const d = (pointIdx !== undefined && data[pointIdx]) ? data[pointIdx] : null;
+                              const dateLabel = d?.timestamp || this.x;
+                              let s = '<div style="font-size:12px;padding:6px 8px;min-width:180px">';
+                              s += '<div style="font-weight:700;font-size:13px;color:#1f2937;margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid #e5e7eb">📅 ' + dateLabel + '</div>';
+                              this.points.forEach(p => {
+                                const val = p.y !== null && p.y !== undefined ? p.y.toFixed(1) : '-';
+                                s += '<div style="padding:2px 0"><span style="color:' + p.color + '">●</span> <b>' + p.series.name + ':</b> ' + val + (varInfo.unit ? ' ' + varInfo.unit : '') + '</div>';
+                              });
+                              s += '</div>';
+                              return s;
+                            }
+                          },
+                          plotOptions: { spline: { marker: { enabled: false } } },
+                          series: [{
+                            name: varInfo.label,
+                            data: seriesData,
+                            type: 'spline',
+                            color: varInfo.color
+                          }]
+                        }}
+                      />
+                    ) : (
+                      <div className="py-8 text-center text-gray-400 text-sm bg-gray-50 rounded-lg">
+                        {varInfo
+                          ? 'Sin datos disponibles para este sensor en el período seleccionado'
+                          : 'Tipo de sensor no reconocido para graficar'}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

@@ -1,7 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import {
   Cloud,
-  Users,
   Radio,
   Database,
   Menu,
@@ -50,7 +49,7 @@ const Navbar = () => {
   });
   const [changingPassword, setChangingPassword] = useState(false);
   const [changingEmail, setChangingEmail] = useState(false);
-  const { user, logout, isFreePlan, subscription } = useAuth();
+  const { user, logout, isFreePlan, subscription, updateUser } = useAuth();
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
   const toast = useToast();
@@ -143,9 +142,7 @@ const Navbar = () => {
       toast.success('Correo cambiado exitosamente');
       
       // Actualizar el usuario en el contexto
-      const updatedUser = { ...user, email: emailData.newEmail };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      window.location.reload();
+      updateUser({ email: emailData.newEmail });
       
       setShowEmailModal(false);
       setEmailData({ newEmail: '', confirmEmail: '', password: '' });

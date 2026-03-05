@@ -11,9 +11,21 @@ import {
   Sun, CloudSun, CloudRain, CloudSnow, CloudLightning, CloudDrizzle, CloudFog, CloudRainWind,
   Wind, Droplets, Thermometer, Umbrella, AlertTriangle, Bell, ArrowRight, Loader2
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
+const FitBounds = ({ positions }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (positions.length > 1) {
+      map.fitBounds(positions, { padding: [50, 50], maxZoom: 13 });
+    } else if (positions.length === 1) {
+      map.setView(positions[0], 12);
+    }
+  }, []);
+  return null;
+};
 
 // Fix default marker icons for leaflet + bundlers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -24,26 +36,31 @@ L.Icon.Default.mergeOptions({
 });
 
 const Home = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading, token } = useAuth();
   const [stations, setStations] = useState([]);
   const [subscription, setSubscription] = useState(null);
   const [stationStats, setStationStats] = useState({});
   const [forecast, setForecast] = useState([]);
   const [activeAlerts, setActiveAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const fetchingRef = useRef(false);
+  const [error, setError] = useState(null);
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
-    if (user?.username && !fetchingRef.current) {
-      fetchDashboardData();
+    if (authLoading || !user?.username || !token || fetchedRef.current) {
+      if (!authLoading && !user?.username) {
+        setLoading(false);
+      }
+      return;
     }
-  }, [user]);
+    fetchedRef.current = true;
+    fetchDashboardData();
+  }, [user?.username, authLoading, token]);
 
   const fetchDashboardData = async () => {
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
     try {
       setLoading(true);
+      setError(null);
       const [stationsRes, subscriptionRes, alertsRes] = await Promise.all([
         stationService.getByUsername(user.username),
         subscriptionService.getByUsername(user.username),
@@ -87,11 +104,11 @@ const Home = () => {
           }
         }
       }
-    } catch (error) {
-      console.error('Error loading dashboard:', error);
+    } catch (err) {
+      console.error('Error loading dashboard:', err);
+      setError(err.message || 'Error al cargar los datos');
     } finally {
       setLoading(false);
-      fetchingRef.current = false;
     }
   };
 
@@ -152,18 +169,47 @@ const Home = () => {
 
   const markerColors = { green: '#22c55e', orange: '#f59e0b', red: '#ef4444', gray: '#9ca3af' };
 
-  const getMarkerIcon = (color) => {
+  const getMarkerIcon = (color, tipoEstacion, precipCurrent) => {
     const fill = markerColors[color] || markerColors.gray;
+    const isRaining = parseFloat(precipCurrent) > 0;
+
+    if (isRaining) {
+      return L.divIcon({
+        className: '',
+        iconSize: [44, 52],
+        iconAnchor: [22, 52],
+        popupAnchor: [0, -54],
+        html: `<style>@keyframes rainPulse{0%,100%{box-shadow:0 0 0 0 rgba(37,99,235,0.7)}50%{box-shadow:0 0 0 10px rgba(37,99,235,0)}}.rain-pulse{animation:rainPulse 1.2s infinite;border-radius:50%;}</style>
+        <div style="position:relative;width:44px;height:52px;text-align:center;">
+          <div class="rain-pulse" style="width:44px;height:44px;background:#dbeafe;display:flex;align-items:center;justify-content:center;border-radius:50%;box-shadow:0 2px 6px rgba(37,99,235,0.4);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/>
+              <line x1="8" y1="19" x2="8" y2="21"/><line x1="8" y1="13" x2="8" y2="15"/>
+              <line x1="16" y1="19" x2="16" y2="21"/><line x1="16" y1="13" x2="16" y2="15"/>
+              <line x1="12" y1="21" x2="12" y2="23"/><line x1="12" y1="15" x2="12" y2="17"/>
+            </svg>
+          </div>
+          <span style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:12px;height:12px;border-radius:50%;background:${fill};border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.4);display:block;"></span>
+        </div>`
+      });
+    }
+
+    const isHidro = tipoEstacion === 'Hidrometeorologica';
+    const imgSrc = isHidro ? '/hidro.png' : '/meteo.png';
+    const imgFilter = isHidro ? '' : 'filter:saturate(0.45) brightness(1.15) opacity(0.85);';
     return L.divIcon({
       className: '',
-      iconSize: [30, 42],
-      iconAnchor: [15, 42],
-      popupAnchor: [0, -38],
-      html: `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="42" viewBox="0 0 30 42">
-        <defs><filter id="s${color}" x="-20%" y="-10%" width="140%" height="130%"><feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-opacity="0.3"/></filter></defs>
-        <path d="M15 0C6.716 0 0 6.716 0 15c0 10.5 15 27 15 27s15-16.5 15-27C30 6.716 23.284 0 15 0z" fill="${fill}" filter="url(#s${color})"/>
-        <circle cx="15" cy="14" r="6" fill="white" opacity="0.9"/>
-      </svg>`
+      iconSize: [44, 52],
+      iconAnchor: [22, 52],
+      popupAnchor: [0, -54],
+      html: `<div style="position:relative;width:44px;height:52px;text-align:center;">
+        <img src="${imgSrc}" style="width:44px;height:44px;${imgFilter}border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);" onerror="this.style.display='none';this.nextSibling.style.display='block'"/>
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="42" viewBox="0 0 30 42" style="display:none;margin:0 auto;">
+          <path d="M15 0C6.716 0 0 6.716 0 15c0 10.5 15 27 15 27s15-16.5 15-27C30 6.716 23.284 0 15 0z" fill="${fill}"/>
+          <circle cx="15" cy="14" r="6" fill="white" opacity="0.9"/>
+        </svg>
+        <span style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:12px;height:12px;border-radius:50%;background:${fill};border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.4);display:block;"></span>
+      </div>`
     });
   };
 
@@ -403,6 +449,7 @@ const Home = () => {
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
+                <FitBounds positions={validStations.map(s => [parseFloat(s.lat), parseFloat(s.lon)])} />
                 {validStations.map((station) => {
                   const stats = stationStats[station.id_estacion];
                   const color = getMarkerColor(stats?.reportDate);
@@ -411,7 +458,7 @@ const Home = () => {
                     <Marker
                       key={station.id}
                       position={[parseFloat(station.lat), parseFloat(station.lon)]}
-                      icon={getMarkerIcon(color)}
+                      icon={getMarkerIcon(color, station.tipo_estacion, stationStats[station.id_estacion]?.precipCurrent)}
                     >
                       <Popup minWidth={340} maxWidth={400}>
                         <div style={{ minWidth: '320px', fontFamily: 'system-ui, sans-serif' }}>
