@@ -1,0 +1,41 @@
+{
+  "properties": [
+    {
+      "name": "jwt.secret",
+      "type": "java.lang.String",
+      "description": "Secret key used to sign JWT tokens."
+    },
+    {
+      "name": "weatherlink.api.key",
+      "type": "java.lang.String",
+      "description": "Weatherlink v2 API key for device and data queries."
+    },
+    {
+      "name": "weatherlink.api.secret",
+      "type": "java.lang.String",
+      "description": "Weatherlink v2 API secret for request signing."
+    },
+    {
+      "name": "alert.notification.cooldown-minutes",
+      "type": "java.lang.Integer",
+      "description": "Minimum minutes between consecutive alert email notifications.",
+      "defaultValue": 15
+    },
+    {
+      "name": "alert.notification.email-resend-minutes",
+      "type": "java.lang.Integer",
+      "description": "Minimum minutes before resending an alert email when condition persists.",
+      "defaultValue": 45
+    },
+    {
+      "name": "alert.notification.from-email",
+      "type": "java.lang.String",
+      "description": "Sender email address for alert notifications."
+    },
+    {
+      "name": "alert.notification.from-name",
+      "type": "java.lang.String",
+      "description": "Sender display name for alert notification emails."
+    }
+  ]
+}
