@@ -25,7 +25,7 @@ import {
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../components/Toast";
-import axios from "axios";
+import api from "../services/api";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -86,18 +86,11 @@ const Navbar = () => {
 
     setChangingPassword(true);
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        'http://localhost:8080/auth/change-password',
-        {
-          username: user.username,
-          currentPassword: passwordData.currentPassword,
-          newPassword: passwordData.newPassword
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      await api.post('/auth/change-password', {
+        username: user.username,
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      });
       toast.success('Contraseña cambiada exitosamente');
       setShowPasswordModal(false);
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -128,18 +121,11 @@ const Navbar = () => {
 
     setChangingEmail(true);
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        'http://localhost:8080/auth/change-email',
-        {
-          username: user.username,
-          newEmail: emailData.newEmail,
-          password: emailData.password
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      await api.post('/auth/change-email', {
+        username: user.username,
+        newEmail: emailData.newEmail,
+        password: emailData.password
+      });
       toast.success('Correo cambiado exitosamente');
       
       // Actualizar el usuario en el contexto
@@ -156,13 +142,11 @@ const Navbar = () => {
 
   const navItems = [
     { name: "Estaciones", path: "/stations", icon: Radio },
-    { name: "Carga Datos", path: "/data-upload", icon: Upload },
     { name: "Pronóstico", path: "/forecasts", icon: CloudSun },
     { name: "Sensores", path: "/sensors", icon: Database },
     { name: "Consulta", path: "/data-query", icon: BarChart3 },
     { name: "Alertas", path: "/alerts", icon: Bell },
     { name: "Balance Hídrico", path: "/balance-hidrico", icon: Droplets },
-    { name: "Pronóstico Local", path: "/local-forecast", icon: Brain },
   ];
 
   // Para plan FREE, solo mostrar Home (no hay items de nav)
