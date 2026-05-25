@@ -20,6 +20,7 @@ import {
   Lock,
   Eye,
   EyeOff,
+  Brain,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
@@ -161,6 +162,7 @@ const Navbar = () => {
     { name: "Consulta", path: "/data-query", icon: BarChart3 },
     { name: "Alertas", path: "/alerts", icon: Bell },
     { name: "Balance Hídrico", path: "/balance-hidrico", icon: Droplets },
+    { name: "Pronóstico Local", path: "/local-forecast", icon: Brain },
   ];
 
   // Para plan FREE, solo mostrar Home (no hay items de nav)

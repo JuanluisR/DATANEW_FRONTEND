@@ -16,6 +16,7 @@ import Subscriptions from './pages/Subscriptions';
 import Forecasts from './pages/Forecasts';
 import BalanceHidrico from './pages/BalanceHidrico';
 import DataUpload from './pages/DataUpload';
+import LocalForecast from './pages/LocalForecast';
 
 function App() {
   return (
@@ -45,6 +46,7 @@ function App() {
                 <Route path="data-upload" element={<DataUpload />} />
                 <Route path="subscriptions" element={<Subscriptions />} />
                 <Route path="forecasts" element={<Forecasts />} />
+                <Route path="local-forecast" element={<LocalForecast />} />
               </Route>
 
               {/* Redirigir cualquier ruta no encontrada al login */}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import stationService from '../services/stationService';
@@ -6,6 +6,7 @@ import dataStationService from '../services/dataStationService';
 import subscriptionService from '../services/subscriptionService';
 import forecastService from '../services/forecastService';
 import alertService from '../services/alertService';
+import { useStationSse } from '../hooks/useStationSse';
 import {
   Cloud, Radio, MapPin, Zap, Star, Sparkles, Crown, Building2,
   Sun, CloudSun, CloudRain, CloudSnow, CloudLightning, CloudDrizzle, CloudFog, CloudRainWind,
@@ -45,6 +46,19 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const fetchedRef = useRef(false);
+  const [, setTick] = useState(0);
+
+  // Re-render markers every minute so rain timeout is recalculated
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleSseUpdate = useCallback((data) => {
+    setStationStats(prev => ({ ...prev, [data.idEstacion]: data }));
+  }, []);
+
+  useStationSse(handleSseUpdate);
 
   useEffect(() => {
     if (authLoading || !user?.username || !token || fetchedRef.current) {
@@ -169,9 +183,12 @@ const Home = () => {
 
   const markerColors = { green: '#22c55e', orange: '#f59e0b', red: '#ef4444', gray: '#9ca3af' };
 
-  const getMarkerIcon = (color, tipoEstacion, precipCurrent) => {
+  const getMarkerIcon = (color, _tipoEstacion, precipCurrent, reportDate) => {
     const fill = markerColors[color] || markerColors.gray;
-    const isRaining = parseFloat(precipCurrent) > 0;
+    const rainRecent = reportDate
+      ? (new Date() - new Date(reportDate.includes('Z') || /[+-]\d{2}:\d{2}$/.test(reportDate) ? reportDate : reportDate + 'Z')) < 10 * 60 * 1000
+      : false;
+    const isRaining = parseFloat(precipCurrent) > 0 && rainRecent;
 
     if (isRaining) {
       return L.divIcon({
@@ -194,22 +211,12 @@ const Home = () => {
       });
     }
 
-    const isHidro = tipoEstacion === 'Hidrometeorologica';
-    const imgSrc = isHidro ? '/hidro.png' : '/meteo.png';
-    const imgFilter = isHidro ? '' : 'filter:saturate(0.45) brightness(1.15) opacity(0.85);';
-    return L.divIcon({
-      className: '',
-      iconSize: [44, 52],
-      iconAnchor: [22, 52],
-      popupAnchor: [0, -54],
-      html: `<div style="position:relative;width:44px;height:52px;text-align:center;">
-        <img src="${imgSrc}" style="width:44px;height:44px;${imgFilter}border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);" onerror="this.style.display='none';this.nextSibling.style.display='block'"/>
-        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="42" viewBox="0 0 30 42" style="display:none;margin:0 auto;">
-          <path d="M15 0C6.716 0 0 6.716 0 15c0 10.5 15 27 15 27s15-16.5 15-27C30 6.716 23.284 0 15 0z" fill="${fill}"/>
-          <circle cx="15" cy="14" r="6" fill="white" opacity="0.9"/>
-        </svg>
-        <span style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:12px;height:12px;border-radius:50%;background:${fill};border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.4);display:block;"></span>
-      </div>`
+    return new L.Icon({
+      iconUrl: '/meteo.png',
+      iconSize: [44, 44],
+      iconAnchor: [22, 44],
+      popupAnchor: [0, -44],
+      className: 'station-marker-icon',
     });
   };
 
@@ -454,11 +461,17 @@ const Home = () => {
                   const stats = stationStats[station.id_estacion];
                   const color = getMarkerColor(stats?.reportDate);
                   const status = getStatusInfo(color);
+                  const precipCurrent = stats?.precipCurrent;
+                  const reportDate = stats?.reportDate;
+                  const rainRecent = reportDate
+                    ? (new Date() - new Date(reportDate.includes('Z') || /[+-]\d{2}:\d{2}$/.test(reportDate) ? reportDate : reportDate + 'Z')) < 10 * 60 * 1000
+                    : false;
+                  const isRaining = parseFloat(precipCurrent) > 0 && rainRecent;
                   return (
                     <Marker
-                      key={station.id}
+                      key={`${station.id}-${isRaining}`}
                       position={[parseFloat(station.lat), parseFloat(station.lon)]}
-                      icon={getMarkerIcon(color, station.tipo_estacion, stationStats[station.id_estacion]?.precipCurrent)}
+                      icon={getMarkerIcon(color, station.tipo_estacion, precipCurrent, reportDate)}
                     >
                       <Popup minWidth={340} maxWidth={400}>
                         <div style={{ minWidth: '320px', fontFamily: 'system-ui, sans-serif' }}>

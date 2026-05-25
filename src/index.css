@@ -133,6 +133,14 @@
   z-index: 9000 !important;
 }
 
+/* Marcadores de estaciones */
+.station-marker-icon {
+  border-radius: 50% !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+  border: none !important;
+  background: none !important;
+}
+
 /* Ocultar scrollbar pero mantener scroll */
 .scrollbar-hide {
   -ms-overflow-style: none;

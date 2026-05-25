@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = 'https://veal-feminine-untoasted.ngrok-free.dev';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
