@@ -13,6 +13,8 @@ public interface StationsService {
 
     Optional<Station> findById(Long id);
 
+    Optional<Station> findByIdEstacion(String idEstacion);
+
     Station save(Station station);
 
     Optional<Station> update(Station station, Long id);

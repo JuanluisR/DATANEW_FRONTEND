@@ -9,7 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -32,6 +34,7 @@ import com.datanew.datanew.dto.ClimateStatsDTO;
 import com.datanew.datanew.services.DataStationService;
 import com.datanew.datanew.services.AlertNotificationService;
 import com.datanew.datanew.services.StationsService;
+import com.datanew.datanew.services.StationSseService;
 
 @RestController
 @RequestMapping("/data")
@@ -48,6 +51,9 @@ public class DataStationController {
 
     @Autowired
     private StationsService stationsService;
+
+    @Autowired
+    private StationSseService stationSseService;
 
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -68,9 +74,19 @@ public class DataStationController {
         return service.validateApiKeyForStation(apiKey, idEstacion);
     }
     
+    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter stream() {
+        String username = getCurrentUsername();
+        if (username == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.UNAUTHORIZED);
+        }
+        return stationSseService.subscribe(username);
+    }
+
     @GetMapping
 public List<DataStation> list(){
-        return service.findAll(); 
+        return service.findAll();
 }
     
     @GetMapping("/{id}")
@@ -239,8 +255,18 @@ public ResponseEntity<?> show(@PathVariable Long id){
       try {
           alertNotificationService.checkAlerts(saved);
       } catch (Exception e) {
-          // Don't fail the data save if alert checking fails
           logger.error("Error checking alerts: {}", e.getMessage());
+      }
+
+      // Push SSE update to the station owner
+      try {
+          stationsService.findByIdEstacion(saved.getId_estacion()).ifPresent(station ->
+              service.getClimateStats(saved.getId_estacion()).ifPresent(stats ->
+                  stationSseService.sendUpdate(station.getUsername(), stats)
+              )
+          );
+      } catch (Exception e) {
+          logger.debug("SSE push skipped: {}", e.getMessage());
       }
 
       return ResponseEntity.status(HttpStatus.CREATED).body(saved);

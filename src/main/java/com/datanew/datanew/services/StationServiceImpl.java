@@ -39,6 +39,12 @@ public class StationServiceImpl implements StationsService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Optional<Station> findByIdEstacion(String idEstacion) {
+        return repository.findByIdEstacion(idEstacion);
+    }
+
+    @Override
     @Transactional
     public Station save(Station station) {
         return repository.save(station);
