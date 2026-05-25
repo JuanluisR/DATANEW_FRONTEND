@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import subscriptionService from '../services/subscriptionService';
 
 const AuthContext = createContext(null);
@@ -15,12 +15,10 @@ export const AuthProvider = ({ children }) => {
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
 
-if (storedToken && storedUser) {
+    if (storedToken && storedUser) {
       setToken(storedToken);
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
-      // Configurar el token en axios
-      axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
     }
     setLoading(false);
   }, []);
@@ -42,14 +40,10 @@ if (storedToken && storedUser) {
 
   const login = async (username, password) => {
     try {
-      const response = await axios.post('http://localhost:8080/auth/login', {
-        username,
-        password
-      });
+      const response = await api.post('/auth/login', { username, password });
 
-const { token, id, firstName, lastName, active, staff, superuser, imagen, empresa, ...rest } = response.data;
+      const { token, id, firstName, lastName, active, staff, superuser, imagen, empresa, ...rest } = response.data;
 
-      // Mapear campos al formato esperado por el frontend
       const userData = {
         ...rest,
         id,
@@ -62,16 +56,11 @@ const { token, id, firstName, lastName, active, staff, superuser, imagen, empres
         empresa: empresa || ''
       };
 
-      // Guardar token y usuario
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
       setToken(token);
       setUser(userData);
 
-      // Configurar token en axios para futuras peticiones
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-      // Cargar suscripción
       try {
         const subResponse = await subscriptionService.getByUsername(username);
         setSubscription(subResponse.data);
@@ -90,13 +79,11 @@ const { token, id, firstName, lastName, active, staff, superuser, imagen, empres
   };
 
   const logout = () => {
-    // Limpiar todo
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
     setSubscription(null);
-    delete axios.defaults.headers.common['Authorization'];
   };
 
   const updateUser = (updatedUser) => {
