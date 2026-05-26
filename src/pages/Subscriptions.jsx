@@ -41,7 +41,7 @@ const companySchema = z.object({
 });
 
 const Subscriptions = () => {
-  const { user, isSubscriptionExpired } = useAuth();
+  const { user, isSubscriptionExpired, refreshSubscription } = useAuth();
   const confirm = useConfirm();
   const [subscription, setSubscription] = useState(null);
   const [plans, setPlans] = useState([]);
@@ -86,10 +86,14 @@ const Subscriptions = () => {
   };
 
   const handleUpgrade = async (planType) => {
-    if (subscription?.planType === planType) return;
+    // Permitir renovar el mismo plan cuando está expirado
+    if (subscription?.planType === planType && !isSubscriptionExpired) return;
 
+    const isRenewal = isSubscriptionExpired && subscription?.planType === planType;
     const confirmed = await confirm(
-      `¿Estás seguro de cambiar tu plan a ${planType}? Se actualizarán las fechas de vigencia y los permisos de tu suscripción.`
+      isRenewal
+        ? `¿Confirmas la renovación del plan ${planType}? La fecha de inicio será hoy y se calculará una nueva fecha de vencimiento.`
+        : `¿Estás seguro de cambiar tu plan a ${planType}? Se actualizarán las fechas de vigencia y los permisos de tu suscripción.`
     );
     if (!confirmed) return;
 
@@ -97,9 +101,14 @@ const Subscriptions = () => {
       setUpgrading(true);
       setError('');
       const response = await subscriptionService.upgradePlan(user.username, planType);
-      // Update state immediately with the response from the server
       setSubscription(response.data);
-      setSuccess(`Plan actualizado a ${planType} exitosamente. Fechas y permisos actualizados.`);
+      // Refrescar AuthContext para que isSubscriptionExpired se actualice
+      await refreshSubscription();
+      setSuccess(
+        isRenewal
+          ? `Plan ${planType} renovado exitosamente.`
+          : `Plan actualizado a ${planType} exitosamente.`
+      );
       setTimeout(() => setSuccess(''), 4000);
     } catch (err) {
       console.error('Error upgrading plan:', err);
@@ -609,6 +618,7 @@ const Subscriptions = () => {
                 {/* Action Button */}
                 <div className="mt-6 pt-4 border-t border-gray-200">
                   {(() => {
+                    // Plan efectivo actual → "Plan Actual"
                     if (isEffectivePlan && !isExpiredPlan) {
                       return (
                         <div className={`w-full py-3 px-4 rounded-lg text-center font-semibold ${colors.badge}`}>
@@ -616,6 +626,7 @@ const Subscriptions = () => {
                         </div>
                       );
                     }
+                    // Plan que expiró → "Renovar"
                     if (isExpiredPlan) {
                       return (
                         <button
@@ -627,12 +638,28 @@ const Subscriptions = () => {
                         </button>
                       );
                     }
+                    // Otros planes con suscripción expirada → deshabilitado
+                    if (isSubscriptionExpired) {
+                      return (
+                        <button disabled className="w-full py-3 px-4 rounded-lg font-semibold bg-gray-100 text-gray-400 cursor-not-allowed">
+                          Cambiar
+                        </button>
+                      );
+                    }
+                    // Estado normal (no expirado) → botón activo
                     return (
                       <button
-                        disabled
-                        className="w-full py-3 px-4 rounded-lg font-semibold bg-gray-100 text-gray-400 cursor-not-allowed"
+                        onClick={() => handleUpgrade(plan.type)}
+                        disabled={upgrading}
+                        className={`w-full py-3 px-4 rounded-lg text-white font-semibold transition-all duration-200 ${colors.button} disabled:opacity-50 disabled:cursor-not-allowed`}
                       >
-                        Cambiar
+                        {upgrading ? (
+                          <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                        ) : plan.level > (plans.find(p => p.type === subscription?.planType)?.level || 0) ? (
+                          'Actualizar'
+                        ) : (
+                          'Cambiar'
+                        )}
                       </button>
                     );
                   })()}

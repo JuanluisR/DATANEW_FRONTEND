@@ -92,6 +92,17 @@ export const AuthProvider = ({ children }) => {
     setUser(newUser);
   };
 
+  const refreshSubscription = async () => {
+    if (user?.username) {
+      try {
+        const response = await subscriptionService.getByUsername(user.username);
+        setSubscription(response.data);
+      } catch (error) {
+        console.error('Error refreshing subscription:', error);
+      }
+    }
+  };
+
   const isFreePlan = subscription?.planType === 'FREE';
 
   const isSubscriptionExpired = (() => {
@@ -109,6 +120,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     updateUser,
+    refreshSubscription,
     isAuthenticated: !!token,
     loading
   };
