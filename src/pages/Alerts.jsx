@@ -253,9 +253,11 @@ const Alerts = () => {
           <h1 className="text-3xl font-bold text-gray-900">Alertas</h1>
           <p className="text-gray-600 mt-1">Configura alertas para tus estaciones meteorológicas</p>
         </div>
-        <button onClick={() => openModal()} className="btn-primary flex items-center space-x-2">
-          <Plus className="h-5 w-5" /><span>Nueva Alerta</span>
-        </button>
+        {alerts.length > 0 && (
+          <button onClick={() => openModal()} className="btn-primary flex items-center space-x-2">
+            <Plus className="h-5 w-5" /><span>Nueva Alerta</span>
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -399,9 +401,9 @@ const Alerts = () => {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-4 flex justify-between items-center rounded-t-2xl z-10">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-[9999] p-0 sm:p-4">
+          <div className="bg-white w-full sm:max-w-2xl sm:rounded-3xl rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="sticky top-0 bg-gradient-to-r from-primary-600 to-primary-500 text-white px-6 py-4 flex justify-between items-center flex-shrink-0">
               <div className="flex items-center space-x-3">
                 <AlertTriangle className="h-6 w-6" />
                 <h2 className="text-xl font-bold">{editingAlert ? 'Editar' : 'Nueva'} Alerta</h2>
@@ -411,6 +413,7 @@ const Alerts = () => {
               </button>
             </div>
 
+            <div className="overflow-y-auto flex-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
               <InputField
                 label="Nombre de la Alerta"
@@ -536,6 +539,7 @@ const Alerts = () => {
                 onCancel={closeModal}
               />
             </form>
+            </div>
           </div>
         </div>
       )}
