@@ -50,7 +50,7 @@ const Navbar = () => {
   });
   const [changingPassword, setChangingPassword] = useState(false);
   const [changingEmail, setChangingEmail] = useState(false);
-  const { user, logout, isFreePlan, subscription, updateUser } = useAuth();
+  const { user, logout, isFreePlan, isSubscriptionExpired, subscription, updateUser } = useAuth();
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
   const toast = useToast();
@@ -141,12 +141,12 @@ const Navbar = () => {
   };
 
   const navItems = [
-    { name: "Estaciones", path: "/stations", icon: Radio },
-    { name: "Pronóstico", path: "/forecasts", icon: CloudSun },
-    { name: "Sensores", path: "/sensors", icon: Database },
-    { name: "Consulta", path: "/data-query", icon: BarChart3 },
-    { name: "Alertas", path: "/alerts", icon: Bell },
-    { name: "Balance Hídrico", path: "/balance-hidrico", icon: Droplets },
+    { name: "Estaciones", path: "/stations", icon: Radio, restricted: false },
+    { name: "Pronóstico", path: "/forecasts", icon: CloudSun, restricted: false },
+    { name: "Sensores", path: "/sensors", icon: Database, restricted: false },
+    { name: "Consulta", path: "/data-query", icon: BarChart3, restricted: true },
+    { name: "Alertas", path: "/alerts", icon: Bell, restricted: true },
+    { name: "Balance Hídrico", path: "/balance-hidrico", icon: Droplets, restricted: true },
   ];
 
   // Para plan FREE, solo mostrar Home (no hay items de nav)
@@ -168,16 +168,31 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-0">
-            {displayNavItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className="flex items-center space-x-2 px-4 py-2.5 rounded-lg text-white hover:bg-white/20 transition-all duration-200 group"
-              >
-                <item.icon className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                <span className="font-medium text-[15px]">{item.name}</span>
-              </Link>
-            ))}
+            {displayNavItems.map((item) => {
+              const isLocked = isSubscriptionExpired && item.restricted;
+              if (isLocked) {
+                return (
+                  <span
+                    key={item.path}
+                    title="Renueva tu plan para acceder"
+                    className="flex items-center space-x-2 px-4 py-2.5 rounded-lg text-white/40 cursor-not-allowed select-none"
+                  >
+                    <Lock className="h-4 w-4" />
+                    <span className="font-medium text-[15px]">{item.name}</span>
+                  </span>
+                );
+              }
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className="flex items-center space-x-2 px-4 py-2.5 rounded-lg text-white hover:bg-white/20 transition-all duration-200 group"
+                >
+                  <item.icon className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                  <span className="font-medium text-[15px]">{item.name}</span>
+                </Link>
+              );
+            })}
 
             {/* User Info & Dropdown */}
             <div
@@ -378,17 +393,31 @@ const Navbar = () => {
               <p className="text-white font-semibold">{user?.username}</p>
               <p className="text-primary-100 text-sm">{user?.email}</p>
             </div>
-            {displayNavItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center space-x-3 px-4 py-3 rounded-lg text-white hover:bg-white/20 transition-all duration-200"
-              >
-                <item.icon className="h-5 w-5" />
-                <span className="font-medium">{item.name}</span>
-              </Link>
-            ))}
+            {displayNavItems.map((item) => {
+              const isLocked = isSubscriptionExpired && item.restricted;
+              if (isLocked) {
+                return (
+                  <span
+                    key={item.path}
+                    className="flex items-center space-x-3 px-4 py-3 rounded-lg text-white/40 cursor-not-allowed select-none"
+                  >
+                    <Lock className="h-5 w-5" />
+                    <span className="font-medium">{item.name}</span>
+                  </span>
+                );
+              }
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center space-x-3 px-4 py-3 rounded-lg text-white hover:bg-white/20 transition-all duration-200"
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span className="font-medium">{item.name}</span>
+                </Link>
+              );
+            })}
             <button
               onClick={handleLogout}
               className="flex items-center space-x-3 px-4 py-3 rounded-lg text-white hover:bg-red-500 transition-all duration-200 w-full"

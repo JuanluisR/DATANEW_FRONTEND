@@ -11,7 +11,7 @@ import stationService from '../services/stationService';
 import dataStationService from '../services/dataStationService';
 import sensorService from '../services/sensorService';
 import { useAuth } from '../context/AuthContext';
-import { Search, Download, BarChart3, Calendar, Clock, AlertCircle, FileText, Sun, Droplets, Wind, CloudRain, Thermometer, Compass, Cloud, Sprout } from 'lucide-react';
+import { Search, Download, BarChart3, Calendar, Clock, AlertCircle, FileText, Sun, Droplets, Wind, CloudRain, Thermometer, Compass, Cloud, Sprout, Lock } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
@@ -47,7 +47,7 @@ const WIND_DIR_MAP = {
 };
 
 const DataQuery = () => {
-  const { user } = useAuth();
+  const { user, isSubscriptionExpired } = useAuth();
   const [stations, setStations] = useState([]);
   const [selectedStation, setSelectedStation] = useState('');
   const [startDate, setStartDate] = useState(null);
@@ -624,6 +624,23 @@ const DataQuery = () => {
 
     return result;
   };
+
+  if (isSubscriptionExpired) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-96 text-center px-4">
+        <div className="bg-gray-100 p-6 rounded-full mb-6">
+          <Lock className="h-12 w-12 text-gray-400" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Acceso Restringido</h2>
+        <p className="text-gray-500 max-w-sm mb-6">
+          Tu suscripción ha expirado. Renueva tu plan para volver a acceder a la consulta de datos.
+        </p>
+        <a href="/subscriptions" className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition-colors">
+          Renovar Plan
+        </a>
+      </div>
+    );
+  }
 
   if (loadingStations) {
     return (

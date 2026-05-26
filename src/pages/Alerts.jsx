@@ -8,7 +8,7 @@ import { useZodForm, InputField, SelectField, CheckboxField, FormButtons, z } fr
 import {
   Plus, Edit2, Trash2, X, Bell, BellOff, Mail,
   Thermometer, Droplets, Wind, Gauge, Sun, CloudRain,
-  AlertTriangle, CheckCircle, Clock, Radio
+  AlertTriangle, CheckCircle, Clock, Radio, Lock
 } from 'lucide-react';
 
 const alertSchema = z.object({
@@ -57,7 +57,7 @@ const OPERATORS = [
 ];
 
 const Alerts = () => {
-  const { user } = useAuth();
+  const { user, isSubscriptionExpired } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
   const [alerts, setAlerts] = useState([]);
@@ -237,6 +237,23 @@ const Alerts = () => {
   const variableOptions = CLIMATE_VARIABLES.map(v => ({ value: v.key, label: v.label }));
   const operatorOptions = OPERATORS.map(o => ({ value: o.key, label: `${o.symbol} ${o.label}` }));
   const stationOptions = stations.map(s => ({ value: s.id_estacion, label: `${s.nombre_estacion} (${s.id_estacion})` }));
+
+  if (isSubscriptionExpired) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-96 text-center px-4">
+        <div className="bg-gray-100 p-6 rounded-full mb-6">
+          <Lock className="h-12 w-12 text-gray-400" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Acceso Restringido</h2>
+        <p className="text-gray-500 max-w-sm mb-6">
+          Tu suscripción ha expirado. Renueva tu plan para volver a acceder a las alertas.
+        </p>
+        <a href="/subscriptions" className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition-colors">
+          Renovar Plan
+        </a>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

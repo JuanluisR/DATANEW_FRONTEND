@@ -7,7 +7,7 @@ import { useConfirm } from '../components/ConfirmDialog';
 import { useZodForm, InputField, SelectField, TextAreaField, CheckboxField, FormButtons, z } from '../components/FormFields';
 import {
   Plus, Edit2, Trash2, X, Droplets, Calendar, TrendingUp, TrendingDown,
-  AlertCircle, CheckCircle, Activity, Sprout, Sun, CloudRain, MapPin, ChevronRight
+  AlertCircle, CheckCircle, Activity, Sprout, Sun, CloudRain, MapPin, ChevronRight, Lock
 } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
@@ -74,7 +74,7 @@ const StatCard = ({ icon: Icon, label, value, unit, colorClass, bgClass }) => (
 );
 
 const BalanceHidrico = () => {
-  const { user } = useAuth();
+  const { user, isSubscriptionExpired } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
   const [cultivos, setCultivos] = useState([]);
@@ -258,6 +258,23 @@ const BalanceHidrico = () => {
       y: { beginAtZero: true, grid: { color: 'rgba(148,163,184,0.12)' }, ticks: { color: '#94a3b8', font: { size: 11 } } },
     },
   };
+
+  if (isSubscriptionExpired) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-96 text-center px-4">
+        <div className="bg-gray-100 p-6 rounded-full mb-6">
+          <Lock className="h-12 w-12 text-gray-400" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Acceso Restringido</h2>
+        <p className="text-gray-500 max-w-sm mb-6">
+          Tu suscripción ha expirado. Renueva tu plan para volver a acceder al balance hídrico.
+        </p>
+        <a href="/subscriptions" className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition-colors">
+          Renovar Plan
+        </a>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

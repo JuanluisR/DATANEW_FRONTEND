@@ -41,7 +41,7 @@ const companySchema = z.object({
 });
 
 const Subscriptions = () => {
-  const { user } = useAuth();
+  const { user, isSubscriptionExpired } = useAuth();
   const confirm = useConfirm();
   const [subscription, setSubscription] = useState(null);
   const [plans, setPlans] = useState([]);
@@ -425,7 +425,7 @@ const Subscriptions = () => {
               Acceso API
             </h2>
 
-            {subscription.apiAccess ? (
+            {subscription.apiAccess && !isSubscriptionExpired ? (
               <div className="space-y-4">
                 {/* Generar API Key */}
                 <div>
@@ -477,7 +477,11 @@ const Subscriptions = () => {
               <div className="text-center py-8">
                 <Lock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500 font-medium">Acceso API no disponible</p>
-                <p className="text-gray-400 text-sm mt-1">Actualiza a plan PRO o ULTRA para obtener acceso a la API</p>
+                <p className="text-gray-400 text-sm mt-1">
+                  {isSubscriptionExpired
+                    ? 'Tu suscripción ha expirado. Renueva tu plan para recuperar el acceso a la API.'
+                    : 'Actualiza a plan PRO o ULTRA para obtener acceso a la API'}
+                </p>
               </div>
             )}
           </div>

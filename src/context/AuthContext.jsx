@@ -94,11 +94,18 @@ export const AuthProvider = ({ children }) => {
 
   const isFreePlan = subscription?.planType === 'FREE';
 
+  const isSubscriptionExpired = (() => {
+    if (!subscription?.endDate) return false;
+    if (subscription.planType === 'FREE') return false;
+    return new Date(subscription.endDate) < new Date();
+  })();
+
   const value = {
     user,
     token,
     subscription,
     isFreePlan,
+    isSubscriptionExpired,
     login,
     logout,
     updateUser,
