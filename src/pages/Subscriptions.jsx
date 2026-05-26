@@ -245,6 +245,14 @@ const Subscriptions = () => {
     return <Check className="h-4 w-4" />;
   };
 
+  const isExpired = (() => {
+    if (!subscription?.endDate) return false;
+    if (subscription.planType === 'FREE') return false;
+    return new Date(subscription.endDate) < new Date();
+  })();
+
+  const effectivePlanType = isExpired ? 'FREE' : subscription?.planType;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -286,7 +294,12 @@ const Subscriptions = () => {
               </div>
               <div>
                 <p className="text-primary-100 text-sm">Tu plan actual</p>
-                <h2 className="text-2xl font-bold">{subscription.planType}</h2>
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  {effectivePlanType}
+                  {isExpired && (
+                    <span className="text-sm font-medium bg-red-500/30 text-red-100 px-2 py-0.5 rounded-full">Expirado</span>
+                  )}
+                </h2>
                 {subscription.companyName && (
                   <p className="text-primary-100 flex items-center gap-2 mt-1">
                     <Building2 className="h-4 w-4" />
@@ -580,27 +593,44 @@ const Subscriptions = () => {
                   ))}
                 </ul>
 
-                {/* Action Button - always at bottom */}
+                {/* Action Button */}
                 <div className="mt-6 pt-4 border-t border-gray-200">
-                  {isCurrentPlan ? (
-                    <div className={`w-full py-3 px-4 rounded-lg text-center font-semibold ${colors.badge}`}>
-                      Plan Actual
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => handleUpgrade(plan.type)}
-                      disabled={upgrading}
-                      className={`w-full py-3 px-4 rounded-lg text-white font-semibold transition-all duration-200 ${colors.button} disabled:opacity-50 disabled:cursor-not-allowed`}
-                    >
-                      {upgrading ? (
-                        <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-                      ) : plan.level > (plans.find(p => p.type === subscription?.planType)?.level || 0) ? (
-                        'Actualizar'
-                      ) : (
-                        'Cambiar'
-                      )}
-                    </button>
-                  )}
+                  {(() => {
+                    const isEffectivePlan = effectivePlanType === plan.type;
+                    const isExpiredPlan = isExpired && plan.type === subscription?.planType;
+
+                    // Plan efectivo actual → "Plan Actual"
+                    if (isEffectivePlan && !isExpiredPlan) {
+                      return (
+                        <div className={`w-full py-3 px-4 rounded-lg text-center font-semibold ${colors.badge}`}>
+                          Plan Actual
+                        </div>
+                      );
+                    }
+
+                    // Plan que expiró → "Renovar"
+                    if (isExpiredPlan) {
+                      return (
+                        <button
+                          onClick={() => handleUpgrade(plan.type)}
+                          disabled={upgrading}
+                          className={`w-full py-3 px-4 rounded-lg text-white font-semibold transition-all duration-200 ${colors.button} disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {upgrading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : 'Renovar'}
+                        </button>
+                      );
+                    }
+
+                    // Otros planes → deshabilitado
+                    return (
+                      <button
+                        disabled
+                        className="w-full py-3 px-4 rounded-lg font-semibold bg-gray-100 text-gray-400 cursor-not-allowed"
+                      >
+                        Cambiar
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
