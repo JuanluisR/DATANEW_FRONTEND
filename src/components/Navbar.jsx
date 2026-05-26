@@ -149,8 +149,8 @@ const Navbar = () => {
     { name: "Balance Hídrico", path: "/balance-hidrico", icon: Droplets },
   ];
 
-  // Para plan FREE, solo mostrar Home (no hay items de nav)
-  const displayNavItems = isFreePlan ? [] : navItems;
+  // Ocultar nav solo si el plan es estrictamente FREE (no por expiración)
+  const displayNavItems = subscription?.planType === 'FREE' ? [] : navItems;
 
   return (
     <nav className="bg-gradient-to-r from-primary-500 to-primary-600 shadow-md sticky top-0 z-50">
