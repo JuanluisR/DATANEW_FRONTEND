@@ -37,7 +37,7 @@ L.Icon.Default.mergeOptions({
 });
 
 const Home = () => {
-  const { user, loading: authLoading, token } = useAuth();
+  const { user, loading: authLoading, token, isSubscriptionExpired } = useAuth();
   const [stations, setStations] = useState([]);
   const [subscription, setSubscription] = useState(null);
   const [stationStats, setStationStats] = useState({});
@@ -300,12 +300,18 @@ const Home = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {subscription && (
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm ${getPlanColor(subscription.planType)}`}>
-                {getPlanIcon(subscription.planType)}
-                <span>Plan {subscription.planType}</span>
-              </div>
-            )}
+            {subscription && (() => {
+              const effectivePlan = isSubscriptionExpired ? 'FREE' : subscription.planType;
+              return (
+                <div className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm ${getPlanColor(effectivePlan)}`}>
+                  {getPlanIcon(effectivePlan)}
+                  <span>Plan {effectivePlan}</span>
+                  {isSubscriptionExpired && (
+                    <span className="text-xs font-medium opacity-70">(Expirado)</span>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
 

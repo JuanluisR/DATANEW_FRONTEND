@@ -247,6 +247,20 @@ const Subscriptions = () => {
 
   const effectivePlanType = isSubscriptionExpired ? 'FREE' : subscription?.planType;
 
+  // Cuando expira, mostrar los límites del plan FREE en vez del plan anterior
+  const freePlan = plans.find(p => p.type === 'FREE');
+  const effectiveStats = isSubscriptionExpired && freePlan ? {
+    maxStations: freePlan.maxStations,
+    maxSensorsPerStation: freePlan.maxSensorsPerStation,
+    maxAlerts: freePlan.maxAlerts,
+    dataRetentionDays: freePlan.dataRetentionDays,
+  } : {
+    maxStations: subscription?.maxStations,
+    maxSensorsPerStation: subscription?.maxSensorsPerStation,
+    maxAlerts: subscription?.maxAlerts,
+    dataRetentionDays: subscription?.dataRetentionDays,
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -322,24 +336,24 @@ const Subscriptions = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/20">
             <div className="text-center">
               <p className="text-3xl font-bold">
-                {subscription.maxStations === -1 ? '∞' : subscription.maxStations}
+                {effectiveStats.maxStations === -1 ? '∞' : effectiveStats.maxStations}
               </p>
               <p className="text-primary-100 text-sm">Estaciones</p>
             </div>
             <div className="text-center">
               <p className="text-3xl font-bold">
-                {subscription.maxSensorsPerStation === -1 ? '∞' : subscription.maxSensorsPerStation}
+                {effectiveStats.maxSensorsPerStation === -1 ? '∞' : effectiveStats.maxSensorsPerStation}
               </p>
               <p className="text-primary-100 text-sm">Sensores/Estación</p>
             </div>
             <div className="text-center">
               <p className="text-3xl font-bold">
-                {subscription.maxAlerts === -1 ? '∞' : subscription.maxAlerts}
+                {effectiveStats.maxAlerts === -1 ? '∞' : effectiveStats.maxAlerts}
               </p>
               <p className="text-primary-100 text-sm">Alertas</p>
             </div>
             <div className="text-center">
-              <p className="text-3xl font-bold">{subscription.dataRetentionDays}</p>
+              <p className="text-3xl font-bold">{effectiveStats.dataRetentionDays}</p>
               <p className="text-primary-100 text-sm">Días de datos</p>
             </div>
           </div>
