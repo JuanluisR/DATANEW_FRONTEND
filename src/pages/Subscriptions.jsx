@@ -245,6 +245,8 @@ const Subscriptions = () => {
     return <Check className="h-4 w-4" />;
   };
 
+  const effectivePlanType = isSubscriptionExpired ? 'FREE' : subscription?.planType;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -282,11 +284,16 @@ const Subscriptions = () => {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-white/20 rounded-xl">
-                {getPlanIcon(subscription.planType)}
+                {getPlanIcon(effectivePlanType)}
               </div>
               <div>
                 <p className="text-primary-100 text-sm">Tu plan actual</p>
-                <h2 className="text-2xl font-bold">{subscription.planType}</h2>
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  {effectivePlanType}
+                  {isSubscriptionExpired && (
+                    <span className="text-sm font-medium bg-red-500/30 text-red-100 px-2 py-0.5 rounded-full">Expirado</span>
+                  )}
+                </h2>
                 {subscription.companyName && (
                   <p className="text-primary-100 flex items-center gap-2 mt-1">
                     <Building2 className="h-4 w-4" />
@@ -540,14 +547,15 @@ const Subscriptions = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {plans.map((plan) => {
           const colors = getPlanColors(plan.type);
-          const isCurrentPlan = subscription?.planType === plan.type;
+          const isEffectivePlan = effectivePlanType === plan.type;
+          const isExpiredPlan = isSubscriptionExpired && plan.type === subscription?.planType;
           const isPopular = plan.type === 'PRO';
 
           return (
             <div
               key={plan.type}
               className={`relative rounded-2xl border-2 ${colors.border} ${colors.bg} overflow-hidden transition-all duration-300 hover:shadow-xl flex flex-col ${
-                isCurrentPlan ? 'ring-2 ring-primary-500 ring-offset-2' : ''
+                isEffectivePlan ? 'ring-2 ring-primary-500 ring-offset-2' : ''
               }`}
             >
               {/* Popular Badge */}
@@ -584,27 +592,36 @@ const Subscriptions = () => {
                   ))}
                 </ul>
 
-                {/* Action Button - always at bottom */}
+                {/* Action Button */}
                 <div className="mt-6 pt-4 border-t border-gray-200">
-                  {isCurrentPlan ? (
-                    <div className={`w-full py-3 px-4 rounded-lg text-center font-semibold ${colors.badge}`}>
-                      Plan Actual
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => handleUpgrade(plan.type)}
-                      disabled={upgrading}
-                      className={`w-full py-3 px-4 rounded-lg text-white font-semibold transition-all duration-200 ${colors.button} disabled:opacity-50 disabled:cursor-not-allowed`}
-                    >
-                      {upgrading ? (
-                        <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-                      ) : plan.level > (plans.find(p => p.type === subscription?.planType)?.level || 0) ? (
-                        'Actualizar'
-                      ) : (
-                        'Cambiar'
-                      )}
-                    </button>
-                  )}
+                  {(() => {
+                    if (isEffectivePlan && !isExpiredPlan) {
+                      return (
+                        <div className={`w-full py-3 px-4 rounded-lg text-center font-semibold ${colors.badge}`}>
+                          Plan Actual
+                        </div>
+                      );
+                    }
+                    if (isExpiredPlan) {
+                      return (
+                        <button
+                          onClick={() => handleUpgrade(plan.type)}
+                          disabled={upgrading}
+                          className={`w-full py-3 px-4 rounded-lg text-white font-semibold transition-all duration-200 ${colors.button} disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {upgrading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : 'Renovar'}
+                        </button>
+                      );
+                    }
+                    return (
+                      <button
+                        disabled
+                        className="w-full py-3 px-4 rounded-lg font-semibold bg-gray-100 text-gray-400 cursor-not-allowed"
+                      >
+                        Cambiar
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

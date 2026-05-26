@@ -256,7 +256,10 @@ const Navbar = () => {
                       <Crown className="h-5 w-5 text-amber-500" />
                       <div>
                         <p className="text-xs text-gray-400">Plan Actual</p>
-                        <p className="font-medium">{subscription?.planType || 'FREE'}</p>
+                        <p className="font-medium">
+                          {isSubscriptionExpired ? 'FREE' : (subscription?.planType || 'FREE')}
+                          {isSubscriptionExpired && <span className="ml-1 text-xs text-red-500">(Expirado)</span>}
+                        </p>
                       </div>
                     </div>
 
