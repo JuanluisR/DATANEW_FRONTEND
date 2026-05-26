@@ -92,10 +92,7 @@ export const AuthProvider = ({ children }) => {
     setUser(newUser);
   };
 
-  const isSubscriptionExpired = subscription?.endDate
-    ? new Date(subscription.endDate) < new Date()
-    : false;
-  const isFreePlan = subscription?.planType === 'FREE' || isSubscriptionExpired;
+  const isFreePlan = subscription?.planType === 'FREE';
 
   const value = {
     user,
