@@ -14,6 +14,9 @@ import {
   Settings,
   Bell,
   Crown,
+  Zap,
+  Star,
+  Sparkles,
   CloudSun,
   Droplets,
   Upload,
@@ -152,6 +155,17 @@ const Navbar = () => {
   // Para plan FREE, solo mostrar Home (no hay items de nav)
   const displayNavItems = isFreePlan ? [] : navItems;
 
+  const effectivePlan = isSubscriptionExpired ? 'FREE' : (subscription?.planType || 'FREE');
+
+  const getPlanIcon = (planType) => {
+    switch (planType) {
+      case 'BASIC': return <Star className="h-5 w-5 text-blue-500" />;
+      case 'PRO':   return <Sparkles className="h-5 w-5 text-purple-500" />;
+      case 'ULTRA': return <Crown className="h-5 w-5 text-amber-500" />;
+      default:      return <Zap className="h-5 w-5 text-gray-400" />;
+    }
+  };
+
   return (
     <nav className="bg-gradient-to-r from-primary-500 to-primary-600 shadow-md sticky top-0 z-50">
       <div className="w-full px-6 sm:px-19 lg:px-22">
@@ -253,12 +267,14 @@ const Navbar = () => {
                   <div className="p-4 space-y-3">
                     {/* Plan */}
                     <div className="flex items-center space-x-3 text-gray-700">
-                      <Crown className="h-5 w-5 text-amber-500" />
+                      {getPlanIcon(effectivePlan)}
                       <div>
                         <p className="text-xs text-gray-400">Plan Actual</p>
-                        <p className="font-medium">
-                          {isSubscriptionExpired ? 'FREE' : (subscription?.planType || 'FREE')}
-                          {isSubscriptionExpired && <span className="ml-1 text-xs text-red-500">(Expirado)</span>}
+                        <p className="font-medium flex items-center gap-1">
+                          {effectivePlan}
+                          {isSubscriptionExpired && (
+                            <span className="text-xs font-medium text-red-500">(Expirado)</span>
+                          )}
                         </p>
                       </div>
                     </div>
